@@ -18,6 +18,8 @@ using Random = System.Random;
 public class GeneticAlgorithm : MonoBehaviour
 {
     private static Random rand = new();
+    // the chance that a gene will mutate
+    private static float mutationRate = 25.0f;
     // Size of board - number of rows and columns
     private static int n = 8;
     // initial population size
@@ -38,72 +40,60 @@ public class GeneticAlgorithm : MonoBehaviour
     private static IndividualChromosome parent2;
     // number of parents to produce offspring
     private static int p = 2;
-    // index of gene to mutate
-    private static int mutationIndex = 0;
     // cross over point is the index which will indicate where to switch from getting genese from each parent
     private static int crossOverPoint = 0;
 
     private void Start()
     {
-        currentPopulation = GenerateStartingPopulation(populationNumber);
-        // pass the starting population of individual chromosomes to be tested
-        PerformFitnessTesting(currentPopulation);
-        // Sort the population by lowest fitness at the top
-        SortPopulation(currentPopulation);
-        bestCandidateFound = currentPopulation[0];
-        WriteBestCandidateToFile();
-        // Keep track of the average fitness for each generation
-        averageFitnessPerGeneration = DetermineFitnessOfGeneration();
-        WriteAverageFitnessPerGenerationToFile();
-        if (currentPopulation.Count < p)
+        var generations = 0;
+        do
         {
-            Debug.LogWarning("Current population less than p!");
-            return;
-        }
-        parent1 = currentPopulation[0];
-        parent2 = currentPopulation[1];
-        mutationIndex = GetMutationIndex();
-        crossOverPoint = GetCrossOverPoint();
-        /*#region SortedPop
-        foreach (var chromosome in currentPopulation)
-        {
-            var debugStr = "";
-            // Debug.Log("Sorted Fitness: "+ chromosome.FitnessValue);
-            foreach (var gene in chromosome)
+            if (generations == 0)
+                currentPopulation = GenerateStartingPopulation(populationNumber);
+            PerformFitnessTesting(currentPopulation);
+            averageFitnessPerGeneration = DetermineFitnessOfGeneration();
+            WriteAverageFitnessPerGenerationToFile();
+            SortPopulation(currentPopulation);
+            bestCandidateFound = currentPopulation[0];
+            WriteBestCandidateToFile();
+            parent1 = currentPopulation[0];
+            parent2 = currentPopulation[1];
+            currentPopulation.Clear();
+            CrossOverParents(parent1, parent2);
+            Debug.Log("currentPopulation after crossover size: "+currentPopulation.Count);
+            foreach (var individualChromosome in currentPopulation)
             {
-                debugStr += gene + " | ";
+                PerformMutations(individualChromosome);
             }
-            Debug.Log(debugStr + "=> "+chromosome.FitnessValue);
-            debugStr = "";
-        }
-        //BestCandidatePerGeneration.Add(currentPopulation[0]);
-        /*if (BestCandidatePerGeneration.Count > 1)
-        {
-            SortBestCandidates();
-            RemoveAllOtherCandidates();
-            var debugStr = "";
-            foreach (var gene in BestCandidatePerGeneration[0].Chromosome)
-            {
-                debugStr += gene + "|";
-            }
-            Debug.Log("BestCandidateSoFar "+BestCandidatePerGeneration[0].FitnessValue+ " "+debugStr);
+            generations++;
+        } while (generations < 10000);
 
-        }
-        #endregion*/
-        /*foreach (var value in averageFitnessPerGeneration)
+    }
+    private void CrossOverParents(IndividualChromosome parent1, IndividualChromosome parent2)
+    {
+        while (currentPopulation.Count <= 6)
         {
-            Debug.Log(value);
-        }
-        var strTmp = "";
-        /foreach (var individualChromosome in BestCandidatePerGeneration)
-        {
-            foreach (var gene in individualChromosome.Chromosome)
+            crossOverPoint = GetCrossOverPoint();
+            int[] child1Genes = new int[n];
+            int[] child2Genes = new int[n];
+            for (int i = 0; i < n; i++)
             {
-                strTmp += gene + "|";
+                if (i < crossOverPoint)
+                {
+                    child1Genes[i] = parent1.Chromosome[i];
+                    child2Genes[i] = parent2.Chromosome[i];
+                } else if (i >= crossOverPoint)
+                {
+                    child1Genes[i] = parent2.Chromosome[i];
+                    child2Genes[i] = parent1.Chromosome[i];
+                }
             }
-            Debug.Log("BestCandidates Chromosome "+strTmp+ " fitnessLevel "+individualChromosome.FitnessValue);
-            strTmp = "";
-        }*/
+
+            IndividualChromosome child1 = new IndividualChromosome(child1Genes);
+            IndividualChromosome child2 = new IndividualChromosome(child2Genes);
+            currentPopulation.Add(child1);
+            currentPopulation.Add(child2);
+        }
     }
 
     // cross over each parents genes starting with parent1 until the cross over point then back fill with parent2 genes
@@ -128,37 +118,6 @@ public class GeneticAlgorithm : MonoBehaviour
         sw.WriteLine(averageFitnessPerGeneration);
         sw.Close();
     }
-
-    /*private void RemoveAllOtherCandidates()
-    {
-        while (BestCandidatePerGeneration.Count > 1)
-        {
-            BestCandidatePerGeneration.RemoveAt(BestCandidatePerGeneration.Count - 1);
-        }
-    }
-
-    private void SortBestCandidates()
-    {
-        // I followed this tutorial for selection sort for this part of the code
-        // https://www.tutorialspoint.com/selection-sort-program-in-chash#:~:text=Selection%20Sort%20is%20a%20sorting,C%23%20is%20given%20as%20follows.
-        
-        for (int i = 0; i < BestCandidatePerGeneration.Count - 1; i++)
-        {
-            var smallestFitness = i;
-            for (int j = i + 1; j < BestCandidatePerGeneration.Count; j++)
-            {
-                if (BestCandidatePerGeneration[j].FitnessValue <
-                    BestCandidatePerGeneration[smallestFitness].FitnessValue)
-                {
-                    smallestFitness = j;
-                }
-            }
-
-            var temp = BestCandidatePerGeneration[smallestFitness];
-            BestCandidatePerGeneration[smallestFitness] = BestCandidatePerGeneration[i];
-            BestCandidatePerGeneration[i] = temp;
-        }
-    }*/
     // write the board state and the fitness value of the best candidate per generation
     private static void WriteBestCandidateToFile()
     {
@@ -178,7 +137,7 @@ public class GeneticAlgorithm : MonoBehaviour
         {
             bufferString += str;
         }
-        Debug.Log(bufferString);
+        //Debug.Log(bufferString);
         using var sw = File.AppendText(path);
         sw.WriteLine(bufferString);
         sw.Close();
@@ -238,27 +197,24 @@ public class GeneticAlgorithm : MonoBehaviour
         }
         return chromosome;
     }
-    // The exact index which should be mutated in the gene
-    private static int GetMutationIndex()
-    {
-        // avoid mutating the first and last columns
-        return rand.Next(1, 7);
-    }
     // Mutates a gene in an individual chromosome at the mutation index
-    private static IndividualChromosome MutateGene(IndividualChromosome chromosome, int mutationIndex)
+    private static void PerformMutations(IndividualChromosome chromosome)
     {
-        var mutatedChromosome = chromosome;
-        var defaultValues = new List<int> {0, 1, 2, 3, 4, 5, 6, 7};
-        defaultValues.Remove(chromosome.Chromosome[mutationIndex]);
-        var mutatedGeneValue = defaultValues[rand.Next(0, defaultValues.Count)];
         for (int i = 0; i < chromosome.Chromosome.Length; i++)
         {
-            if (i == mutationIndex)
+            var shouldMutate = rand.Next(0, 101) <= mutationRate;
+            Debug.Log("mutationRate: "+mutationRate+" shouldMutate: "+shouldMutate);
+            if (shouldMutate)
             {
-                mutatedChromosome.Chromosome[i] = mutatedGeneValue;
+                int mutatedGeneValue;
+                do
+                {
+                    mutatedGeneValue = rand.Next(0, 8);
+                } while (mutatedGeneValue == chromosome.Chromosome[i]);
+                Debug.Log("mutatedGeneValue: "+mutatedGeneValue+" chromosome[i] value: "+chromosome.Chromosome[i]);
+                chromosome.Chromosome[i] = mutatedGeneValue;
             }
         }
-        return mutatedChromosome;
     }
     // a queen is going to be represented by which column they are placed in each row
     private static int GenerateGene()
@@ -268,33 +224,22 @@ public class GeneticAlgorithm : MonoBehaviour
     // calculate the fitness level for each individual chromosome
     private static void PerformFitnessTesting(List<IndividualChromosome> population)
     {
-        var dbgStr = "";
         foreach (var individualChromosome in population)
         {
-            foreach (var gene in individualChromosome)
-            {
-                dbgStr += gene + " | ";
-            }
             CheckFitnessOfIndividualChromosome(individualChromosome);
         }
     }
 
-    private static List<IndividualChromosome> DetermineTop2Fittest(List<IndividualChromosome> populaton)
-    {
-        // Sort each individual chromosome so that the chromosmes with the fewest collisions is at the top
-        // return the top 2 chromsomes from sorted list
-        return new List<IndividualChromosome>(2);
-    }
     // loop across the chromosomes genes to determine if there are queens attacking other queens in the same row or diagonally
     private static void CheckFitnessOfIndividualChromosome(IndividualChromosome individualChromosome)
     {
-        var fitnessChromosomeDBG = "";
+        /*var fitnessChromosomeDBG = "";
         foreach (var gene in individualChromosome.Chromosome)
         {
             fitnessChromosomeDBG += gene + "|";
         }
-        Debug.Log(fitnessChromosomeDBG);
-        fitnessChromosomeDBG = "";
+        Debug.Log(fitnessChromosomeDBG);*/
+        //fitnessChromosomeDBG = "";
         for (int i = 0; i < 8; i++)
         {
             for (int j = i; j < 7; j++)
