@@ -5,13 +5,14 @@ public class GenerateBoard : MonoBehaviour
 {
     [SerializeField] private GameObject whiteSquare;
     [SerializeField] private GameObject blackSquare;
-    
-    private void Awake()
+    public static GameObject[,] boardState = new GameObject[8,8];
+
+private void Awake()
     {
         RenderBoard();
     }
 
-    private void RenderBoard()
+private void RenderBoard()
     {
         var counter = 0;
         for (int i = 0; i < 8; i++)
@@ -20,15 +21,17 @@ public class GenerateBoard : MonoBehaviour
             {
                 if ((i + j) % 2 == 0)
                 {
-                    var whiteSqr = InstantiateSquare(whiteSquare, j, i);
+                    var whiteSqr = InstantiateSquare(whiteSquare, i, j);
                     whiteSqr.name = "whiteSquare " + counter;
                     GeneticAlgorithm.squares.Add(whiteSqr);
+                    boardState[i, j] = whiteSqr;
                 }
                 else
                 {
-                    var blackSqr = InstantiateSquare(blackSquare, j, i);
+                    var blackSqr = InstantiateSquare(blackSquare, i, j);
                     blackSqr.name = "blackSquare " + counter;
                     GeneticAlgorithm.squares.Add(blackSqr);
+                    boardState[i, j] = blackSqr;
                 }
                 counter++;
             }
