@@ -19,7 +19,7 @@ public class GeneticAlgorithm : MonoBehaviour
 {
     private static Random rand = new();
     // the chance that a gene will mutate
-    private static float mutationRate = 25.0f;
+    private static float mutationRate = 33.0f;
     // Size of board - number of rows and columns
     private static int n = 8;
     // initial population size
@@ -36,6 +36,7 @@ public class GeneticAlgorithm : MonoBehaviour
     private static int p = 2;
     // cross over point is the index which will indicate where to switch from getting genese from each parent
     private static int crossOverPoint = 0;
+    private static int[,] _board;
 
     private void Start()
     {
@@ -49,6 +50,7 @@ public class GeneticAlgorithm : MonoBehaviour
             }
 
             var debugStr = "";
+            /*
             foreach (var individual in currentPopulation)
             {
                 foreach (var gene in individual.Chromosome)
@@ -65,7 +67,7 @@ public class GeneticAlgorithm : MonoBehaviour
                     Debug.Log("currentPopulation individual: "+debugStr);
                     debugStr = "";
                 }
-            }
+            }*/
             PerformFitnessTesting();
             averageFitnessPerGeneration = DetermineFitnessOfGeneration();
             WriteAverageFitnessPerGenerationToFile();
@@ -90,8 +92,8 @@ public class GeneticAlgorithm : MonoBehaviour
             bestCandidateFound = currentPopulation[0];
             WriteBestCandidateToFile();
             CrossOver();
-            Debug.Log("currentPopulation after crossover size: "+currentPopulation.Count);
-            foreach (var individual in currentPopulation)
+            Debug.Log("currentPopulation size after crossover: "+currentPopulation.Count);
+            /*foreach (var individual in currentPopulation)
             {
                 foreach (var gene in individual.Chromosome)
                 {
@@ -99,10 +101,10 @@ public class GeneticAlgorithm : MonoBehaviour
                 }
                 Debug.Log("currentPopulation individual after crossover: "+debugStr);
                 debugStr = "";
-            }
+            }*/
             foreach (var individual in currentPopulation)
             {
-                if (rand.Next(0, 101) < mutationRate)
+                if (rand.Next(0, 101) <= mutationRate)
                 {
                     PerformMutations(individual);                    
                 }
@@ -118,7 +120,6 @@ public class GeneticAlgorithm : MonoBehaviour
 
         DisplayBestCandidateFound();
     }
-
     private void DisplayBestCandidateFound()
     {
         for (int i = 0; i < 8; i++)
@@ -133,10 +134,8 @@ public class GeneticAlgorithm : MonoBehaviour
             }
         }
     }
-
     private void CrossOver()
     {
-
         var parent1 = currentPopulation[0];
         var parent2 = currentPopulation[1];
         currentPopulation.Clear();
@@ -161,7 +160,6 @@ public class GeneticAlgorithm : MonoBehaviour
             currentPopulation.Add(new IndividualChromosome(child2Genes));
         }
     }
-
     // File to keep track of the average fitness per generation
     private void WriteAverageFitnessPerGenerationToFile()
     {
@@ -200,7 +198,6 @@ public class GeneticAlgorithm : MonoBehaviour
         sw.WriteLine(bufferString);
         sw.Close();
     }
-    
     // add up the total fitenss for each chromosome in this generation, then divide by the population size to get the average fitness
     // this value should go down across generations
     private float DetermineFitnessOfGeneration()
@@ -212,7 +209,6 @@ public class GeneticAlgorithm : MonoBehaviour
         }
         return totalFitness / currentPopulation.Count;
     }
-
     // Sort population so that the chromosomes with the smallest number of collisions is at the top of list
     private void SortPopulation()
     {
@@ -234,7 +230,6 @@ public class GeneticAlgorithm : MonoBehaviour
             currentPopulation[i] = temp;
         }
     }
-
     // Create board states equal to size of the starting population
     private static List<IndividualChromosome> GenerateStartingPopulation(int startingPopulation)
     {
@@ -279,32 +274,53 @@ public class GeneticAlgorithm : MonoBehaviour
             CheckFitnessOfIndividualChromosome(individualChromosome);
         }
     }
-
     // loop across the chromosomes genes to determine if there are queens attacking other queens in the same row or diagonally
     private static void CheckFitnessOfIndividualChromosome(IndividualChromosome individualChromosome)
     {
+        //GenerateFitnessGrid(individualChromosome);
+        var debugStr = "";
+        foreach (var VARIABLE in individualChromosome.Chromosome)
+        {
+            debugStr += VARIABLE+"|";
+        }
+        Debug.Log("individual fitness chromosome: "+debugStr);
+
         for (int i = 0; i < 8; i++)
         {
+            var diagSlopeTest = 1;
             for (int j = i; j < 7; j++)
             {
                 if (individualChromosome.Chromosome[i] == individualChromosome.Chromosome[j + 1])
                 {
+                    Debug.Log($"i={i} j+1={j+1} individualChromosome[i] {individualChromosome.Chromosome[i]} == individualChromosome[j + 1] {individualChromosome.Chromosome[j+1]}");
                     individualChromosome.FitnessValue++;
                 }
-                if (Mathf.Abs(individualChromosome.Chromosome[i] - individualChromosome.Chromosome[j + 1]) == 1)
+
+                if (diagSlopeTest < 8)
                 {
-                    individualChromosome.FitnessValue++;
+                    if (Mathf.Abs(individualChromosome.Chromosome[i] - individualChromosome.Chromosome[j + 1]) == diagSlopeTest)
+                    {
+                        Debug.Log($"i={i} dst={diagSlopeTest} j={j}| Chromosome[i] ({individualChromosome.Chromosome[i]}) - Chromosome[j+1] ({individualChromosome.Chromosome[j+1]})| == diagSlopeTest ({diagSlopeTest})");
+                        individualChromosome.FitnessValue++;
+                    }
                 }
-                for (int k = j + 1; k < 8; k++)
+                diagSlopeTest++;
+            }
+        }
+        Debug.Log("chromosome fitness: "+individualChromosome.FitnessValue+" index: "+individualChromosome.index);
+    
+    }
+    private static void GenerateFitnessGrid(IndividualChromosome individualChromosome)
+    {
+        _board = new int [8, 8];
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                _board[i, j] = -1;
+                if (j == individualChromosome.Chromosome[i])
                 {
-                    if (individualChromosome.Chromosome[i] + k == individualChromosome.Chromosome[k])
-                    {
-                        individualChromosome.FitnessValue++;
-                    }
-                    if (individualChromosome.Chromosome[i] - k == individualChromosome.Chromosome[k])
-                    {
-                        individualChromosome.FitnessValue++;
-                    }
+                    _board[i, j] = individualChromosome.Chromosome[i];
                 }
             }
         }

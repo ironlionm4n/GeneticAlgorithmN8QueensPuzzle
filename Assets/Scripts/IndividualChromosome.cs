@@ -2,10 +2,12 @@ using System.Collections;
 
 public class IndividualChromosome : IEnumerable
 {
+    public int index = 0;
     public IndividualChromosome(int[] val)
     {
         _chromosome = val;
         _fitnessValue = 0;
+        index++;
     }
     private int[] _chromosome;
     private int _fitnessValue;
